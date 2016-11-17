@@ -52,6 +52,9 @@ public class Utils
 
         if (response == HttpURLConnection.HTTP_OK)
         {
+            if (!target.getParentFile().exists())
+                target.getParentFile().mkdirs();
+
             FileOutputStream output = null;
             DigestInputStream input = null;
 
@@ -126,6 +129,9 @@ public class Utils
         BufferedWriter out = null;
         try
         {
+            if (!file.getParentFile().exists())
+                file.getParentFile().mkdirs();
+
             out = new BufferedWriter(new FileWriter(file));
             out.write(data);
             return true;

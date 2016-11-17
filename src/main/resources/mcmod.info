@@ -1,14 +1,14 @@
 [
 {
-  "modid": "examplemod",
-  "name": "Example Mod",
-  "description": "Example placeholder mod.",
+  "modid": "mercurius_updater   ",
+  "name": "Mercurius Upder",
+  "description": "Auto updater for Mercurius, which is a Statistics gathering mod created by the Forge team. See the Forge forums for more details.",
   "version": "${version}",
   "mcversion": "${mcversion}",
   "url": "",
   "updateUrl": "",
-  "authorList": ["ExampleDude"],
-  "credits": "The Forge and FML guys, for making this example",
+  "authorList": ["Tamas", "Lex"],
+  "credits": "Tamas, Lex, Flamegoat",
   "logoFile": "",
   "screenshots": [],
   "dependencies": []

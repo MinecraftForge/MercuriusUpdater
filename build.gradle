@@ -1,0 +1,188 @@
+subprojects {
+    version = "1.0" //Make warning shut up
+}
+
+//TODO: Have a cross MC version code folder?
+
+evaluationDependsOnChildren() // gotta make sure the children happen first
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'idea'
+
+version = "1.0.0"
+if (project.hasProperty('addBuildVersion'))
+{
+    def bn = System.getenv("BUILD_NUMBER") ?: project.ext.properties.buildNumber ?: 0;
+    if (bn == 0)
+        throw new RuntimeException("Attempted to add build but used no build number!")
+    version = version + "." + bn
+}
+
+allprojects {
+    group = "net.minecraftforge"
+    archivesBaseName = "MercuriusUpdater"
+    apply plugin: 'maven'
+}
+
+repositories {
+	mavenCentral()
+}
+    
+dependencies {
+	compile 'com.google.guava:guava:17.0' //Not sure how far back this goes.. need to check each dep for each mc version...
+    compile 'com.google.code.gson:gson:2.2.4'
+    compile 'org.apache.logging.log4j:log4j-api:2.0-beta9'
+}
+
+// easy setups
+task setupDecompWorkspace
+task setupDevWorkspace
+task setupCiWorkspace
+
+// configure subprojects
+subprojects {
+    version = minecraft.version  + "-" + rootProject.version    
+    
+    if (rootProject.hasProperty('forgeMavenPass') && !project.hasProperty('addBuildVersion')) { 
+                                                     //If we are uploading this to maven we should push it out as JUST the MC version so that
+                                                     // the launcher can auto-download it.
+        version = minecraft.version
+    }
+    
+    dependencies {
+        compile rootProject
+    }
+    sourceSets.main.resources.srcDirs += rootProject.sourceSets.main.resources.srcDirs
+
+    jar {
+        duplicatesStrategy = 'exclude'
+        from rootProject.sourceSets.main.output
+    }
+    
+    task signJar(dependsOn: 'jar') {
+        onlyIf {
+            rootProject.hasProperty('jarsigner')
+        }
+
+        def jarsigner = [:];
+
+        if (rootProject.hasProperty('jarsigner'))
+            jarsigner = rootProject.jarsigner;
+    } << {
+        ant.signjar(jar: jar.archivePath,
+                alias: 'forge',
+                keystore: jarsigner.keystore,
+                storepass: jarsigner.storepass,
+                keypass: jarsigner.keypass)
+    }
+    uploadArchives.dependsOn signJar
+    build.dependsOn signJar
+
+    sourceJar {
+        duplicatesStrategy = 'exclude'
+        from rootProject.sourceSets.main.allSource
+    }
+    
+    def buildtxt = project.buildDir.absolutePath + '/libs/MercuriusUpdater-' + project.version + '-build_num.txt'
+    
+    task writeBuildNumber() {
+        onlyIf {
+            !project.hasProperty('addBuildVersion')
+        }
+    } << {
+        def bn = System.getenv("BUILD_NUMBER") ?: rootProject.ext.properties.buildNumber ?: 0;
+        new File(buildtxt).text =  minecraft.version  + '-' + rootProject.version + '.' + bn
+    }
+    uploadArchives.dependsOn writeBuildNumber
+    
+    artifacts {
+        archives sourceJar
+        if (!project.hasProperty('addBuildVersion'))
+            archives file(buildtxt)
+    }
+    
+    processResources
+    {
+        inputs.property "version", project.version
+        inputs.property "mcversion", project.minecraft.version
+
+        from(sourceSets.main.resources.srcDirs) {
+            include 'mcmod.info'
+            expand 'version':project.version, 'mcversion':project.minecraft.version
+        }
+
+        from(sourceSets.main.resources.srcDirs) {
+            exclude 'mcmod.info'
+        }
+    }
+    
+    uploadArchives {
+        repositories.mavenDeployer {
+
+            dependsOn 'build'
+
+            if (rootProject.hasProperty('forgeMavenPass'))
+            {
+                repository(url: "http://files.minecraftforge.net/maven/manage/upload") {
+                    authentication(userName: "forge", password: rootProject.getProperty('forgeMavenPass'))
+                }
+            }
+            else
+            {
+                repository(url: 'file://localhost/' + rootProject.file('repo').getAbsolutePath())
+            }
+
+            pom {
+                groupId = project.group
+                version = project.version
+                artifactId = project.archivesBaseName
+                project {
+                    name project.archivesBaseName
+                    packaging 'jar'
+                    description 'Updater for the Mercurius Statistics Gathering Mod'
+                    url 'https://github.com/MinecraftForge/MercuriusUpdater'
+
+                    scm {
+                        url 'https://github.com/MinecraftForge/MercuriusUpdater'
+                        connection 'scm:git:git://github.com/MinecraftForge/MercuriusUpdater.git'
+                        developerConnection 'scm:git:git@github.com/MinecraftForge/MercuriusUpdater.git'
+                    }
+
+                    issueManagement {
+                        system 'github'
+                        url 'https://github.com/MinecraftForge/MercuriusUpdater/issues'
+                    }
+
+                    licenses {
+                        license {
+                            name 'LGPL v2.1'
+                            url 'https://github.com/MinecraftForge/MercuriusUpdater/blob/master/LICENSE.md'
+                            distribution 'repo'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'LexManos'
+                            name 'Lex Manos'
+                            roles { role 'developer' }
+                        }
+                        developer {
+                            id 'TamasHenning'
+                            name 'Tamas Henning'
+                            roles { role 'developer' }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // task deps
+    rootProject.setupDecompWorkspace.dependsOn setupDecompWorkspace
+    rootProject.setupDevWorkspace.dependsOn setupDevWorkspace
+    rootProject.setupCiWorkspace.dependsOn setupCiWorkspace
+    rootProject.build.dependsOn build
+    rootProject.uploadArchives.dependsOn uploadArchives
+}

@@ -1,9 +1,11 @@
 package net.minecraftforge.mercurius.updater;
 
+import net.minecraft.launchwrapper.LaunchClassLoader;
 import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.ModClassLoader;
 import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.event.*;
 import net.minecraftforge.fml.relauncher.ReflectionHelper;
@@ -13,9 +15,8 @@ import net.minecraftforge.mercurius.updater.Utils;
 import net.minecraftforge.fml.relauncher.Side;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.net.URL;
-import java.net.URLClassLoader;
 
 @Mod(modid = Constants.MODID, version = Constants.VERSION)
 public class MercuriusUpdaterMod
@@ -45,10 +46,20 @@ public class MercuriusUpdaterMod
         }
 
 
-        URLClassLoader cl;
         try
         {
-            cl = URLClassLoader.newInstance(new URL[] {libFile.toURI().toURL()}, MercuriusUpdaterMod.class.getClassLoader());
+            ClassLoader cl = addClassPath(MercuriusUpdaterMod.class.getClassLoader(), libFile);
+            if (cl == null)
+            {
+                LogHelper.fatal("Could not add Mercurius to class path! ClassLoaders:");
+                cl = MercuriusUpdaterMod.class.getClassLoader();
+                while (cl != null)
+                {
+                    LogHelper.fatal("  " + cl.getClass().getName());
+                    cl = cl.getParent();
+                }
+                return;
+            }
             loadedMercurius = cl.loadClass("net.minecraftforge.mercurius.StatsMod");
             loadedMercuriusInstance = loadedMercurius.newInstance();
         }
@@ -58,6 +69,22 @@ public class MercuriusUpdaterMod
         }
 
         invokeEvent("preInit", e);
+    }
+
+    private ClassLoader addClassPath(ClassLoader loader, File file) throws IOException
+    {
+        if (loader instanceof LaunchClassLoader)
+        {
+            ((LaunchClassLoader)loader).addURL(file.toURI().toURL());
+            return loader;
+        }
+        else if (loader instanceof ModClassLoader)
+        {
+            ((ModClassLoader)loader).addFile(file);
+            return loader;
+        }
+        ClassLoader parent = loader.getParent();
+        return parent == null ? null : addClassPath(parent, file);
     }
 
     @EventHandler

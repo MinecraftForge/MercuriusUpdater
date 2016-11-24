@@ -18,7 +18,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 
-@Mod(modid = Constants.MODID, version = Constants.VERSION)
+@Mod(modid = Constants.MODID, version = Constants.VERSION, acceptableRemoteVersions = "*")
 public class MercuriusUpdaterMod
 {
     @SuppressWarnings("rawtypes")

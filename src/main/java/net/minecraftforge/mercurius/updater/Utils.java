@@ -306,6 +306,9 @@ public class Utils
     public static File updateMercurius(File libs, String mcversion)
     {
         String version = Utils.updateMavenVersion(libs, "net.minecraftforge", "Mercurius", mcversion);
+        if (version == null)
+            return null; //Something went wrong abort!
+
         File target = Utils.updateMavenFile(libs, "net.minecraftforge", "Mercurius", version);
 
         if (target == null)
@@ -407,6 +410,13 @@ public class Utils
         {
             LogHelper.info("Remote version up to date: " + fileVersion);
             version = fileVersion;
+            if (latestF.exists())
+                latestF.setLastModified(System.currentTimeMillis());
+        }
+        else if (remoteVersion == null)
+        {
+            LogHelper.error("Could not retreive remote version, check log for details. Assumiing known version is good: " + fileVersion);
+            version = fileVersion;
         }
         else
         {
@@ -414,9 +424,6 @@ public class Utils
             writeFile(latestF, remoteVersion);
             version = remoteVersion;
         }
-
-        if (latestF.exists())
-            latestF.setLastModified(System.currentTimeMillis());
 
         return version;
     }
@@ -473,7 +480,7 @@ public class Utils
             {
                 LogHelper.info("  Hash file does not exist, but file does. Creating hash file with current hash. with 24 hour timeout.");
                 LogHelper.info("    Checksum: " + fileChecksum);
-                needsDownload = !writeFile(shaF, fileChecksum); // If we cant write the file, try redownloading
+                needsDownload = fileChecksum == null || !writeFile(shaF, fileChecksum); // If we cant write the file, try redownloading
             }
         }
 

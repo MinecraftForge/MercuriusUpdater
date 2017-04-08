@@ -186,6 +186,21 @@ public class Utils
         }
     }
 
+    private static void closeSilently(JarFile c)
+    {
+        if (c != null)
+        {
+            try
+            {
+                c.close();
+            }
+            catch (IOException e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
     final static protected char[] hexArray = "0123456789abcdef".toCharArray();
     private static String bytesToHex(byte[] bytes)
     {

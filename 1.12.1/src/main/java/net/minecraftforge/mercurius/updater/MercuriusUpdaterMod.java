@@ -17,6 +17,7 @@ import net.minecraftforge.fml.relauncher.Side;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 @Mod(modid = Constants.MODID, version = Constants.VERSION, acceptableRemoteVersions = "*")
 public class MercuriusUpdaterMod
@@ -118,13 +119,12 @@ public class MercuriusUpdaterMod
             return;
 
         try {
-            ReflectionHelper.findMethod(loadedMercurius, name, name, event.getClass())
-                .invoke(loadedMercuriusInstance, event);
+            Method m = loadedMercurius.getDeclaredMethod(name, event.getClass());
+            m.setAccessible(true);
+            m.invoke(loadedMercuriusInstance, event);
         } catch (UnableToFindMethodException e) {
             // No method found so its not listening for it.
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
